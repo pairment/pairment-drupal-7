@@ -1,0 +1,108 @@
+<?php
+
+function pairment_init() {
+  if(!user_access('view pairment feedback')) {
+    return;
+  }
+  $public_id = variable_get('pairment_public_id', false);
+  if(!$public_id) {
+    return;
+  }
+  drupal_add_js('(function(w,d,t,u,n,s,e){w["A11yObject"]=n;w[n]=w[n]||function(){
+      (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+      e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+    })(window,document,"script","//localhost:3000/install/v1/'. $public_id .'.js");',
+    'inline');
+}
+
+/**
+ * Implements hook_menu()/
+ */
+function pairment_menu() {
+  $items = array();
+
+  $items['admin/config/content/pairment'] = array(
+    'title' => 'Pairment',
+    'description' => 'Manage integration with Pairment',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pairment_admin_form'),
+    'access arguments' => array('administer website')
+  );
+
+  return $items;
+}
+
+/**
+ * Admin settings callback.
+ */
+function pairment_admin_form($form, &$form_state) {
+
+  $form['pairment_public_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Pairment public ID'),
+    '#default_value' => variable_get('pairment_public_id', ''),
+    '#description' => t('Paste the public Pairment ID of your site.'),
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_permission
+*/
+function pairment_permission() {
+  return array(
+    'view pairment feedback' => array(
+      'title' => t('View Pairment feedback'),
+    )
+  );
+}
+
+/**
+ * Implements hook_form_alter().
+ * Alters any field with a text processing option to add a pairment option.
+ */
+function pairment_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
+  if(!isset($form['instance']['settings']['text_processing'])) {
+    return;
+  }
+
+  $pairment_settings = variable_get('pairment_field_settings', array());
+  $instance_setting = isset($pairment_settings[$form['#field']['field_name']][$form['#instance']['entity_type']][$form['#instance']['bundle']]) ?
+    $pairment_settings[$form['#field']['field_name']][$form['#instance']['entity_type']][$form['#instance']['bundle']] :
+      false;
+
+  $form['instance']['settings']['pairment'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Check this field for accessibilty with Pairment'),
+    '#default_value' => $instance_setting
+  );
+
+  $form['#submit'][] = 'pairment_form_field_ui_field_edit_form_alter_submit';
+}
+
+/**
+ * Saves the pairment field settings to a variable.
+ */
+function pairment_form_field_ui_field_edit_form_alter_submit($form, $form_state) {
+  $pairment_settings = variable_get('pairment_field_settings', array());
+  $pairment_settings[$form['#field']['field_name']][$form['#instance']['entity_type']][$form['#instance']['bundle']] = $form_state['values']['instance']['settings']['pairment'];
+  variable_set('pairment_field_settings', $pairment_settings);
+}
+
+/**
+ * Implements hook_field_display_alter()
+ * Changes the display of a field if it needs to be checked by pairment.
+ */
+function pairment_preprocess_field(&$variables, $hook) {
+  if(!user_access('view pairment feedback')) {
+    return;
+  }
+  $pairment_settings = variable_get('pairment_field_settings', array());
+  if(!isset($pairment_settings[$variables['element']['#field_name']][$variables['element']['#entity_type']][$variables['element']['#bundle']]) ||
+     !$pairment_settings[$variables['element']['#field_name']][$variables['element']['#entity_type']][$variables['element']['#bundle']]) {
+    return;
+  }
+  $variables['classes_array'][] = '_pairment-content';
+};

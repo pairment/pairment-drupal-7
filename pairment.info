@@ -1,0 +1,4 @@
+name=Pairment
+description="Integrates your site with Pairment accessibility checking."
+version=0.1
+core=7.x
