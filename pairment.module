@@ -75,7 +75,7 @@ function pairment_form_field_ui_field_edit_form_alter(&$form, &$form_state, $for
 
   $form['instance']['settings']['pairment'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Check this field for accessibilty with Pairment'),
+    '#title' => t('Check the accessibility of this field using Pairment'),
     '#default_value' => $instance_setting
   );
 
